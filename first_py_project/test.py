@@ -82,5 +82,6 @@ for i in predict:
 
 print(j)
 
+print('evaluating...')
 acc=svc.score(test_data,test_label)
 print('accuracy:',acc)
