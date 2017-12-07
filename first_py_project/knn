@@ -1,0 +1,114 @@
+import numpy as  np
+import pandas as pd
+import matplotlib.pyplot as plt, matplotlib.image as mpimg
+from sklearn.decomposition import PCA
+from sklearn.neighbors import KNeighborsClassifier
+
+trainset=np.loadtxt('digits4000_trainset.txt')
+digits_vec=np.loadtxt('digits4000_digits_vec.txt')
+labels=np.loadtxt('digits4000_digits_labels.txt')
+testset=np.loadtxt('digits4000_testset.txt')
+challengelabel=np.loadtxt('cdigits_digits_labels.txt')
+challengedigits_vec=np.loadtxt('cdigits_digits_vec.txt')
+
+
+challenge_data=np.asarray(challengedigits_vec)
+print("hello,python")
+
+
+train_index=trainset[:,1]    #all training data's index
+test_index=testset[:,1]
+
+
+test_data=[]
+test_label=[]
+for x in test_index:
+    img=digits_vec[(int)(x-1)]
+    test_data.append(img)
+    label=labels[(int)(x-1)]
+    test_label.append((int)(label))
+
+train_data=[]
+train_label=[]
+for x in train_index:
+    img=digits_vec[(int)(x-1)]
+    cols, = img.shape
+    for j in range(cols):
+            if (img[j] <= 128):
+                img[j] = 0
+            else:
+                img[j] = 255
+
+    train_data.append(img)
+    label=labels[(int)(x-1)]
+    train_label.append((int)(label))
+
+train_data=np.asarray(train_data)
+test_data=np.asarray(test_data)
+train_data[train_data>0]=1
+test_data[test_data>0]=1
+challenge_data[challenge_data>0]=1
+
+cps=30
+pca = PCA(n_components=cps, whiten=True)
+pca.fit(train_data)
+
+eigenvalues = pca.components_.reshape(cps, 28, 28)
+print('eigenvalues',eigenvalues)
+n_row = 4
+n_col = 7
+
+# Plot the first 8 eignenvalues
+plt.figure(figsize=(13,12))
+for i in list(range(n_row * n_col)):
+    offset =0
+    plt.subplot(n_row, n_col, i + 1)
+    plt.imshow(eigenvalues[i].reshape(28,28), cmap='jet')
+    title_text = 'Eigenvalue ' + str(i + 1)
+    plt.title(title_text, size=6.5)
+    plt.xticks(())
+    plt.yticks(())
+plt.show()
+
+train_data = pca.transform(train_data)
+test_data = pca.transform(test_data)
+
+
+
+
+clf = KNeighborsClassifier(n_neighbors=3)
+clf.fit(train_data, train_label)
+print('KNN...')
+predict = clf.predict(test_data)
+acc_KNN= clf.score(test_data,test_label)
+print(acc_KNN)
+
+col,=predict.shape
+failure_label=[]
+true_label=[]
+j=0
+m=0
+for i in range(col):
+    if(predict[i]==test_label[i]):
+        j=j+1
+    else:
+        failure_label.append(predict[i])
+        true_label.append(test_label[i])
+
+d = {'true label': test_label, 'predict label': predict}
+df = pd.DataFrame(d)
+df.index.name='index'
+df.index+=1
+df.to_csv('results_knn.csv', header=True)
+
+d = {'true label': true_label, 'failure label': failure_label}
+df = pd.DataFrame(d)
+df.index.name='index'
+df.index+=1
+df.to_csv('failure_knn.csv', header=True)
+
+challenge_data=pca.transform(challenge_data)
+predict_c=clf.predict(challenge_data)
+acc_chanllenge=clf.score(challenge_data,challengelabel)
+print(predict_c)
+print('challenge set accuracy',acc_chanllenge)
