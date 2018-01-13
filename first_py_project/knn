@@ -45,19 +45,23 @@ for x in train_index:
 
 train_data=np.asarray(train_data)
 test_data=np.asarray(test_data)
+
 train_data[train_data>0]=1
 test_data[test_data>0]=1
 challenge_data[challenge_data>0]=1
+trainwithoutpca=train_data
+testwithoutpca=test_data
 
-cps=30
+cps=22
 pca = PCA(n_components=cps, whiten=True)
 pca.fit(train_data)
 
+
+'''
 eigenvalues = pca.components_.reshape(cps, 28, 28)
 print('eigenvalues',eigenvalues)
 n_row = 4
 n_col = 7
-
 # Plot the first 8 eignenvalues
 plt.figure(figsize=(13,12))
 for i in list(range(n_row * n_col)):
@@ -68,32 +72,49 @@ for i in list(range(n_row * n_col)):
     plt.title(title_text, size=6.5)
     plt.xticks(())
     plt.yticks(())
-plt.show()
-
+#plt.show()
+'''
 train_data = pca.transform(train_data)
 test_data = pca.transform(test_data)
 
 
 
 
-clf = KNeighborsClassifier(n_neighbors=3)
+clf = KNeighborsClassifier(n_neighbors=3,weights='distance',algorithm='auto')
 clf.fit(train_data, train_label)
 print('KNN...')
 predict = clf.predict(test_data)
 acc_KNN= clf.score(test_data,test_label)
-print(acc_KNN)
+print('accuracy',acc_KNN)
 
 col,=predict.shape
 failure_label=[]
 true_label=[]
+failure=[]
 j=0
 m=0
 for i in range(col):
     if(predict[i]==test_label[i]):
         j=j+1
     else:
+        failure.append(trainwithoutpca[i].reshape(28, 28))
         failure_label.append(predict[i])
         true_label.append(test_label[i])
+
+failure1=failure[59:68]
+failure2=failure[69:78]
+failure3=failure[79:88]
+failure4=failure[89:98]
+failure5=failure[99:108]
+failure_image1 = np.hstack(failure1)
+failure_image2 = np.hstack(failure2)
+failure_image3 = np.hstack(failure3)
+failure_image4 = np.hstack(failure4)
+failure_image5 = np.hstack(failure5)
+failure_image=np.vstack((failure_image1,failure_image2,failure_image3,failure_image4,failure_image5))
+print(failure_image)
+plt.figure()
+plt.imshow(failure_image.T,cmap='binary')
 
 d = {'true label': test_label, 'predict label': predict}
 df = pd.DataFrame(d)
@@ -107,8 +128,31 @@ df.index.name='index'
 df.index+=1
 df.to_csv('failure_knn.csv', header=True)
 
+plt.figure()
+plt.margins(0.1)
+plt.xticks(np.arange(11)+0.25, ('0', '1', '2', '3', '4','5','6','7','8','9'))
+plt.hist(true_label, bins=range(0, 11, 1),alpha=0.5,width=0.5)
+plt.title('misclassified labels')
+plt.show()
+
+
 challenge_data=pca.transform(challenge_data)
 predict_c=clf.predict(challenge_data)
 acc_chanllenge=clf.score(challenge_data,challengelabel)
 print(predict_c)
 print('challenge set accuracy',acc_chanllenge)
+
+print('cross-validation...')
+pca = PCA(n_components=cps, whiten=True)
+pca.fit(testwithoutpca)
+testwithoutpca = pca.transform(testwithoutpca)
+clf = KNeighborsClassifier(n_neighbors=3)
+clf.fit(testwithoutpca, test_label)
+trainwithoutpca= pca.transform(trainwithoutpca)
+#print('evaluating...')
+#predict = clf.predict(trainwithoutpca)
+acc_cross= clf.score(trainwithoutpca, train_label)
+print('accuracy',acc_cross)
+average_acc=(acc_KNN+acc_cross)/2
+print('average accuracy for KNN classifier',average_acc)
+

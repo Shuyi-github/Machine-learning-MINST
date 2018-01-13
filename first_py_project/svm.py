@@ -17,12 +17,7 @@ challengedigits_vec=np.loadtxt('cdigits_digits_vec.txt')
 
 print("hello,python")
 digits=np.asmatrix(digits_vec)
-i=1
-img=digits[0]
-img=img.reshape((28,28))
-#print(img)
-plt.imshow(img,cmap='Greys')
-#plt.show()
+
 
 train_index=trainset[:,1]    #all training data's index
 #print(train_index)
@@ -52,44 +47,42 @@ print('pre-processing...')
 
 train_data=np.asarray(train_data)
 test_data=np.asarray(test_data)
-chanllenge_data=np.asarray(challengedigits_vec)
+challenge_data=np.asarray(challengedigits_vec)
 
 
 
 plt.figure(3)
 plt.hist(train_data[1])
 
-train_data[train_data>0]=1
-test_data[test_data>0]=1
+#train_data[train_data>0]=1
+#test_data[test_data>0]=1
 
 trainwithoutpca=train_data
 testwithoutpca=test_data
 
-chanllenge_data[chanllenge_data>0]=1
+#challenge_data[challenge_data>0]=1
 
-
-
+g=0.05
+c=10
+kernel='rbf'
 
 pca = PCA(n_components=26, whiten=True)
 pca.fit(train_data)
 train_data = pca.transform(train_data)
 print('after pca process..,')
 
-
-
-
 print('Train SVM...')
 print(train_label)
-svc = SVC(degree=10,kernel='rbf',C=10,gamma=0.05)
+svc = SVC(kernel=kernel,C=c,gamma=g)
 svc.fit(train_data, train_label)
 
 print('Predicting...')
 test_data = pca.transform(test_data)
 predict = svc.predict(test_data)
-print(predict)
+#print(predict)
 
 col,=predict.shape
-print(col)
+#print(col)
 failure=[]
 failure_label=[]
 true_label=[]
@@ -104,11 +97,11 @@ for i in range(col):
         true_label.append(test_label[i])
 
 
-failure_image=[]
-failure1=failure[1:10]
-failure2=failure[11:20]
-failure3=failure[21:30]
-failure4=failure[31:40]
+
+failure1=failure[21:30]
+failure2=failure[31:40]
+failure3=failure[71:80]
+failure4=failure[81:90]
 failure5=failure[41:50]
 failure_image1 = np.hstack(failure1)
 failure_image2 = np.hstack(failure2)
@@ -123,30 +116,26 @@ plt.imshow(failure_image.T,cmap='binary')
 print('matching tuples:',j)
 
 print('evaluating...')
+print('SVM...')
 acc=svc.score(test_data,test_label)
 print('accuracy:',acc)
 
-#chanllenge_data=pca.transform(chanllenge_data)
-#predict=svc.predict(chanllenge_data)
-#acc_chanllenge=svc.score(chanllenge_data,challengelabel)
-#print(predict)
-#print('challenge set accuracy',acc_chanllenge)
+challenge_data=pca.transform(challenge_data)
+predict_c=svc.predict(challenge_data)
+acc_challenge=svc.score(challenge_data,challengelabel)
+print(predict_c)
+print('challenge set accuracy',acc_challenge)
 
-img1=trainwithoutpca[10]
-img1=img1.reshape((28,28))
-img2=trainwithoutpca[200]
-img2=img2.reshape((28,28))
 
-plt.figure(1)
-plt.subplot(211)
-plt.imshow(img1,cmap='binary')
-
-plt.subplot(212)
-plt.imshow(img2,cmap='binary')
 
 
 plt.figure(2)
 plt.hist(trainwithoutpca[1])
+plt.figure()
+plt.margins(0.1)
+plt.xticks(np.arange(11)+0.25, ('0', '1', '2', '3', '4','5','6','7','8','9'))
+plt.hist(true_label, bins=range(0, 11, 1),alpha=0.5,width=0.5)
+plt.title('misclassified labels')
 plt.show()
 
 d = {'true label': test_label, 'predict label': predict}
@@ -160,3 +149,21 @@ df = pd.DataFrame(d)
 df.index.name='index'
 df.index+=1
 df.to_csv('failure_svm.csv', header=True)
+
+print('cross-validation...')
+pca = PCA(n_components=26, whiten=True)
+pca.fit(testwithoutpca)
+testwithoutpca = pca.transform(testwithoutpca)
+
+#print('Train SVM...')
+#print(test_label)
+svc = SVC(kernel=kernel,C=c,gamma=g)
+svc.fit(testwithoutpca, test_label)
+
+trainwithoutpca = pca.transform(trainwithoutpca)
+predict = svc.predict(trainwithoutpca)
+#print('evaluating...')
+acc_cross=svc.score(trainwithoutpca,train_label)
+print('accuracy:',acc_cross)
+averge_acc=(acc_cross+acc)/2
+print('average accuracy for svm classifier:',averge_acc)
